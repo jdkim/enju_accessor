@@ -1,0 +1,1 @@
+require 'enju_accessor/enju_accessor'
