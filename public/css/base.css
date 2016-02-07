@@ -1,0 +1,44 @@
+body {
+	width: 800px;
+	margin: 0;
+	padding: 0;
+}
+
+@media screen and (max-width: 806px) {
+	body {
+		width: 100%;
+	}
+}
+
+section {
+	margin: 0;
+	padding: 10px;
+}
+
+h1, h2, h3 {
+	margin: 5px 0 5px -5px;
+}
+
+h1 {
+	font-size: 2em;
+	text-decoration: underline;
+}
+
+h2 {
+	font-size: 1.2em;
+}
+
+h3 {
+	font-size: 1em;
+}
+
+ul {
+	margin: 5px;
+	padding-left: 20px;
+}
+
+pre {
+	white-space: pre-wrap;
+	background-color: #DDDDDD;
+	padding:5px
+}

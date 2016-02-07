@@ -19,6 +19,7 @@ class EnjuAccessor
     case response.code
     when 200             # 200 means success
       raise "Empty input." if response =~/^Empty line/
+      response = response.encode("ASCII-8BIT").force_encoding("UTF-8")
 
       @tokens = []
 
@@ -60,7 +61,7 @@ class EnjuAccessor
     denotations = []
     idx_last = 0
     @tokens.each do |token|
-      denotations << {:id => 'T' + (token[:idx] + @tid_base).to_s, :begin => token[:beg] + offset_base, :end => token[:end] + offset_base, :obj => token[:cat]}
+      denotations << {:id => 'T' + (token[:idx] + @tid_base).to_s, :span => {:begin => token[:beg] + offset_base, :end => token[:end] + offset_base}, :obj => token[:cat]}
       idx_last = token[:idx]
     end
 
@@ -94,7 +95,7 @@ class EnjuAccessor
       relations += annotation[:relations]
     end
 
-    {:denotations => denotations, :relations => relations}
+    {:text=> text, :denotations => denotations, :relations => relations}
   end
 
 end

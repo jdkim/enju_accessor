@@ -18,6 +18,7 @@ before do
 end
 
 get '/' do
+	@annotations = enju.get_annotation_text(params[:text]) unless params[:text].nil?
 	erb :index
 end
 
