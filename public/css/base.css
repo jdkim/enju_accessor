@@ -10,9 +10,25 @@ body {
 	}
 }
 
+#header {
+	margin-bottom: 5px;
+	padding: 10px 5px;
+	background-color: #1111ff;
+}
+
+#title {
+	display: inline-block;
+	font-size: 2em;
+	color: #f0f0f0;
+}
+
+#main {
+	padding: 5px;
+}
+
 section {
-	margin: 0;
-	padding: 10px;
+	margin: 5px 0;
+	padding: 5px;
 }
 
 h1, h2, h3 {
@@ -20,16 +36,19 @@ h1, h2, h3 {
 }
 
 h1 {
-	font-size: 2em;
-	text-decoration: underline;
-}
-
-h2 {
 	font-size: 1.2em;
 }
 
-h3 {
+h2 {
 	font-size: 1em;
+}
+
+.pane {
+	margin: 5px 0;
+	border-style: solid;
+	border-color: #ccccff;
+	background-color: #eeeeff;
+	border-radius: 10px;
 }
 
 ul {
