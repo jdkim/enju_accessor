@@ -1,11 +1,12 @@
 EnjuAccessor
 =============
-EnjuAccessor is a wrapping class to access an Enju CGI server with a sentence or a text block.
-It will then return the parsing results in the PubAnnotation JSON format.
+EnjuAccessor is a wrapper class to access an [Enju](http://kmcs.nii.ac.jp/enju) CGI server through REST API.
+For a given sentence, it returns a deep dependency parse produced by Enju.
+The result is represented in the [PubAnnotation JSON format](http://www.pubannotation.org/docs/annotation-format/).
 
 Author
 ------
-Jin-Dong Kim (jindong.kim@gmail.com)
+Jin-Dong Kim (jdkim@dbcls.rois.ac.jp)
 
 License
 -------

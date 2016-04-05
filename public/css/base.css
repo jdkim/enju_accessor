@@ -13,7 +13,7 @@ body {
 #header {
 	margin-bottom: 5px;
 	padding: 10px 5px;
-	background-color: #1111ff;
+	background-color: #44aac6;
 }
 
 #title {
@@ -58,6 +58,6 @@ ul {
 
 pre {
 	white-space: pre-wrap;
-	background-color: #DDDDDD;
+	background-color: #EDEDED;
 	padding:5px
 }
