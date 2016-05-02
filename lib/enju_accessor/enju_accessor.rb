@@ -40,6 +40,7 @@ class EnjuAccessor
       # @root = @tokens.shift[:args][0][1]
 
       # get span offsets
+      top = @tokens.shift
       i = 0
       @tokens.each do |token|
         i += 1 until sentence[i] !~ /[ \t\n]/
