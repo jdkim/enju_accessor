@@ -37,7 +37,7 @@ class EnjuAccessor
         @tokens << token
       end
 
-      @root = @tokens.shift[:args][0][1]
+      # @root = @tokens.shift[:args][0][1]
 
       # get span offsets
       i = 0
