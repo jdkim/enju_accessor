@@ -6,6 +6,7 @@ require 'text_sentencer'
 class EnjuAccessor
   def initialize
     @enju_cgi = RestClient::Resource.new "http://bionlp.dbcls.jp/enju"
+    @sentencer = TextSentencer.new
     @tid_base, @rid_base = 0, 0
   end
 
@@ -24,7 +25,7 @@ class EnjuAccessor
       @tokens = []
 
       # response is a parsing result in CONLL format.
-      response.split(/\r?\n/).each_with_index do |t, i|  # for each token analysis
+      response.to_s.split(/\r?\n/).each_with_index do |t, i|  # for each token analysis
         dat = t.split(/\t/, 7)
         token = Hash.new
         token[:idx]  = i - 1   # use 0-oriented index
@@ -33,7 +34,9 @@ class EnjuAccessor
         token[:pos]  = dat[3]
         token[:cat]  = dat[4]
         token[:type] = dat[5]
-        token[:args] = dat[6].split.collect{|a| type, ref = a.split(':'); [type, ref.to_i - 1]} if dat[6]
+        if dat[6]
+          token[:args] = dat[6].split.collect{|a| type, ref = a.split(':'); [type, ref.to_i - 1]}
+        end
         @tokens << token
       end
 
@@ -86,7 +89,7 @@ class EnjuAccessor
   end
 
   def get_annotation_text (text)
-    segments = TextSentencer.segment(text)
+    segments = @sentencer.segment(text)
 
     denotations, relations = [], []
     segments.each_with_index do |s, i|
@@ -103,16 +106,58 @@ end
 
 
 if __FILE__ == $0
-  enju = EnjuAccessor.new
-  annotation = enju.get_annotation_text(
-"Foxp3 Represses Retroviral Transcription by Targeting Both NF-kappaB and CREB Pathways
-Forkhead box (Fox)/winged-helix transcription factors regulate multiple aspects of immune responsiveness and Foxp3 is recognized as an essential functional marker of regulatory T cells. Herein we describe downstream signaling pathways targeted by Foxp3 that may negatively impact retroviral pathogenesis. Overexpression of Foxp3 in HEK 293T and purified CD4+ T cells resulted in a dose-dependent and time-dependent decrease in basal levels of nuclear factor-kappaB (NF-kappaB) activation. Deletion of the carboxyl-terminal forkhead (FKH) domain, critical for nuclear localization and DNA-binding activity, abrogated the ability of Foxp3 to suppress NF-kappaB activity in HEK 293T cells, but not in Jurkat or primary human CD4+ T cells. We further demonstrate that Foxp3 suppressed the transcription of two human retroviral promoters (HIV-1 and human T cell lymphotropic virus type I [HTLV-I]) utilizing NF-kappaB-dependent and NF-kappaB-independent mechanisms. Examination of the latter identified the cAMP-responsive element binding protein (CREB) pathway as a target of Foxp3. Finally, comparison of the percent Foxp3+CD4+CD25+ T cells to the HTLV-I proviral load in HTLV-I-infected asymptomatic carriers and patients with HTLV-I-associated myelopathy/tropical spastic paraparesis suggested that high Foxp3 expression is associated with low proviral load and absence of disease. These results suggest an expanded role for Foxp3 in regulating NF-kappaB- and CREB-dependent cellular and viral gene expression."
-  )
-  p annotation
+  require 'json'
+  require 'optparse'
 
+  outdir = 'out'
 
-  ARGF.each do |line|
-    annotation = enju.get_annotation_sentence(line.chomp)
-    p annotation
+  optparse = OptionParser.new do |opts|
+    opts.banner = "Usage: enju_accessor.rb [option(s)] a-directory-with-txt-files"
+
+    opts.on('-o', '--output directory', "specifies the output directory (default: '#{outdir}')") do |d|
+      outdir = d
+    end
+
+    opts.on('-h', '--help', 'displays this screen') do
+      puts opts
+      exit
+    end
   end
+
+  optparse.parse!
+  unless ARGV.length == 1
+    puts optparse
+    exit
+  end
+
+  indir = ARGV[0]
+  puts "# input directory: #{indir}"
+  puts "# output directory: #{outdir}"
+
+  if !outdir.nil? && !File.exists?(outdir)
+    Dir.mkdir(outdir)
+    puts "# output directory (#{outdir}) created."
+  end
+
+  enju = EnjuAccessor.new
+
+  count_files = 0
+
+  Dir.foreach(indir) do |infile|
+    next unless infile.end_with?('.txt')
+    pmid = File.basename(infile, ".txt")
+    outfile = outdir + '/' + pmid + '.json' unless outdir.nil?
+
+    count_files += 1
+    print "#{pmid}\t#{count_files}\r"
+
+    text = File.read(indir + '/' + infile)
+    annotation = enju.get_annotation_text(text)
+    annotation[:sourcedb] = 'PubMed'
+    annotation[:sourceid] = pmid
+
+    File.write(outfile, annotation.to_json)
+  end
+
+  puts "# count files: #{count_files}"
 end
