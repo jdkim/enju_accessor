@@ -27,6 +27,14 @@
     <form>
       <input type="text" name="text" style="width:80%" value="<%= params[:text] %>" placeholder="Input text">
       <input type="submit">
+      <br/><br/>
+      <% if params[:mode] == 'POS' %>
+        <input type="radio" name="mode" value="PAS" id="mode_PAS" /><label for="mode_PAS">PAS (predicate argument structure)</label>
+        <input type="radio" name="mode" value="POS" id="mode_POS" checked="true" /><label for="mode_POS">PAS (part-of-speech)</label>
+      <% else %>
+        <input type="radio" name="mode" value="PAS" id="mode_PAS" checked="true" /><label for="mode_PAS">PAS (predicate argument structure)</label>
+        <input type="radio" name="mode" value="POS" id="mode_POS" /><label for="mode_POS">PAS (part-of-speech)</label>
+      <% end %>
     </form>
     <% unless @annotations.nil? %>
       <section>

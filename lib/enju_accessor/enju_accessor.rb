@@ -88,6 +88,24 @@ class EnjuAccessor
     {:denotations => denotations, :relations => relations}
   end
 
+  def get_pos_tagging_sentence (sentence, offset_base = 0, mode = '')
+    @id_base = 0 unless mode == 'continue'
+
+    get_parse(sentence)
+
+    denotations = []
+    idx_last = 0
+    @tokens.each do |token|
+      denotations << {id: 'P' + (token[:idx] + @id_base).to_s, span: {begin: token[:beg] + offset_base, end: token[:end] + offset_base}, obj: token[:pos]}
+      denotations << {id: 'B' + (token[:idx] + @id_base).to_s, span: {begin: token[:beg] + offset_base, end: token[:end] + offset_base}, obj: token[:base]}
+      idx_last = token[:idx]
+    end
+
+    @id_base = @id_base + idx_last + 1
+
+    {:denotations => denotations}
+  end
+
   def get_annotation_text (text)
     segments = @sentencer.segment(text)
 
@@ -102,6 +120,19 @@ class EnjuAccessor
     {:text=> text, :denotations => denotations, :relations => relations}
   end
 
+  def get_pos_tagging (text)
+    segments = @sentencer.segment(text)
+
+    denotations = []
+    segments.each_with_index do |s, i|
+      mode = (i == 0)? nil : 'continue'
+      annotation = get_pos_tagging_sentence(text[s[0]...s[1]], s[0], mode)
+      denotations += annotation[:denotations]
+    end
+
+    {:text=> text, :denotations => denotations}
+  end
+
 end
 
 
@@ -110,12 +141,17 @@ if __FILE__ == $0
   require 'optparse'
 
   outdir = 'out'
+  mode = :pas
 
   optparse = OptionParser.new do |opts|
     opts.banner = "Usage: enju_accessor.rb [option(s)] a-directory-with-txt-files"
 
     opts.on('-o', '--output directory', "specifies the output directory (default: '#{outdir}')") do |d|
       outdir = d
+    end
+
+    opts.on('-p', '--pos-tagging', "tells it to produce POS tagging instead of PAS structure") do
+      mode = :pos
     end
 
     opts.on('-h', '--help', 'displays this screen') do
@@ -152,7 +188,7 @@ if __FILE__ == $0
     print "#{pmid}\t#{count_files}\r"
 
     text = File.read(indir + '/' + infile)
-    annotation = enju.get_annotation_text(text)
+    annotation = mode == :pos ? enju.get_pos_tagging(text) : enju.get_annotation_text(text)
     annotation[:sourcedb] = 'PubMed'
     annotation[:sourceid] = pmid
 

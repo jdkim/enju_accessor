@@ -18,7 +18,9 @@ before do
 end
 
 get '/' do
-	@annotations = enju.get_annotation_text(params[:text]) unless params[:text].nil?
+	unless params[:text].nil?
+		@annotations = params[:mode] == 'POS' ? enju.get_pos_tagging(params[:text]) :enju.get_annotation_text(params[:text])
+	end
 	erb :index
 end
 
