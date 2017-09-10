@@ -34,7 +34,9 @@ class EnjuAccessor
     toks = {}
     cons = {}
 
-    # response is a parsing result in SO format.
+    adjustment = 0
+
+    # r is a parsing result in SO format.
     idx = 0
     r.split(/\r?\n/).each do |item|  # for each item of analysis
       b, e, attr_str = item.split(/\t/)
@@ -45,6 +47,10 @@ class EnjuAccessor
       attrs = node.css('node').first.to_h
 
       if attrs['tok'] == ""
+        b += adjustment
+        sentence[b...e].each_char{|c| adjustment += (1 - c.bytesize) if c !~ /\p{ASCII}/}
+        e += adjustment
+
         id = attrs['id']
         pos = attrs['pos']
         pos = attrs['base'] if [',', '.', ':', '(', ')', '``', '&apos;&apos;'].include?(pos)
