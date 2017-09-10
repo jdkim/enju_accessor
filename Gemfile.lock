@@ -11,7 +11,10 @@ GEM
     json (1.8.3)
     kgio (2.10.0)
     mime-types (2.99.1)
+    mini_portile2 (2.2.0)
     netrc (0.11.0)
+    nokogiri (1.8.0)
+      mini_portile2 (~> 2.2.0)
     rack (1.6.4)
     rack-protection (1.5.3)
       rack
@@ -43,6 +46,7 @@ PLATFORMS
 DEPENDENCIES
   erubis
   json
+  nokogiri (~> 1.8)
   rest-client
   sinatra
   text_sentencer (~> 1.0.2)

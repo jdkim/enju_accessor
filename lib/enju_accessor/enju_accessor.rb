@@ -1,83 +1,120 @@
 #!/usr/bin/env ruby
 require 'rest-client'
 require 'text_sentencer'
+require 'nokogiri'
 
 # An instance of this class holds the parsing result of a natural language query as anlyzed by Enju.
 class EnjuAccessor
   def initialize
-    @enju_cgi = RestClient::Resource.new "http://bionlp.dbcls.jp/enju"
+    @enju_cgi = RestClient::Resource.new "http://localhost:38401/cgi-lilfes/enju"
     @sentencer = TextSentencer.new
     @tid_base, @rid_base = 0, 0
   end
 
   def get_parse (sentence)
     begin
-      response = @enju_cgi.get :params => {:sentence=>sentence, :format=>'conll'}
+      response = @enju_cgi.get :params => {:sentence=>sentence, :format=>'so'}
     rescue => e
       raise IOError, "Enju CGI server does not respond."
     end
 
-    case response.code
+    parse = case response.code
     when 200             # 200 means success
       raise "Empty input." if response =~/^Empty line/
-      response = response.encode("ASCII-8BIT").force_encoding("UTF-8")
-
-      @tokens = []
-
-      # response is a parsing result in CONLL format.
-      response.to_s.split(/\r?\n/).each_with_index do |t, i|  # for each token analysis
-        dat = t.split(/\t/, 7)
-        token = Hash.new
-        token[:idx]  = i - 1   # use 0-oriented index
-        token[:word] = dat[1]
-        token[:base] = dat[2]
-        token[:pos]  = dat[3]
-        token[:cat]  = dat[4]
-        token[:type] = dat[5]
-        if dat[6]
-          token[:args] = dat[6].split.collect{|a| type, ref = a.split(':'); [type, ref.to_i - 1]}
-        end
-        @tokens << token
-      end
-
-      # @root = @tokens.shift[:args][0][1]
-
-      # get span offsets
-      top = @tokens.shift
-      i = 0
-      @tokens.each do |token|
-        i += 1 until sentence[i] !~ /[ \t\n]/
-        token[:beg] = i
-        token[:end] = i + token[:word].length
-        i = token[:end]
-      end
+      r = response.encode("ASCII-8BIT").force_encoding("UTF-8").to_s
+      read_parse(sentence, r)
     else
       raise IOError, "Enju CGI server dose not respond."
     end
-    @tokens
+
+    parse
+  end
+
+  def read_parse (sentence, r)
+    toks = {}
+    cons = {}
+
+    # response is a parsing result in SO format.
+    idx = 0
+    r.split(/\r?\n/).each do |item|  # for each item of analysis
+      b, e, attr_str = item.split(/\t/)
+      b = b.to_i
+      e = e.to_i
+
+      node = Nokogiri::HTML.parse('<node ' + attr_str + '>')
+      attrs = node.css('node').first.to_h
+
+      if attrs['tok'] == ""
+        id = attrs['id']
+        pos = attrs['pos']
+        pos = attrs['base'] if [',', '.', ':', '(', ')', '``', '&apos;&apos;'].include?(pos)
+        pos.sub!('$', '-DOLLAR-')
+        pos = '-COLON-' if pos == 'HYPH'
+        toks[id] = {beg: b, end:e, word:sentence[b ... e], idx:idx, base:attrs['base'], pos:pos, cat:attrs['cat'], args:{}}
+        toks[id][:args][:arg1] = attrs['arg1'] if attrs['arg1']
+        toks[id][:args][:arg2] = attrs['arg2'] if attrs['arg2']
+        toks[id][:args][:arg3] = attrs['arg3'] if attrs['arg3']
+        toks[id][:args][:mod] = attrs['mod'] if attrs['mod']
+        idx += 1
+      end
+    end
+
+    r.split(/\r?\n/).each do |item|  # for each item of analysis
+      b, e, attr_str = item.split(/\t/)
+      b = b.to_i
+      e = e.to_i
+
+      node = Nokogiri::HTML.parse('<node ' + attr_str + '>')
+      attrs = node.css('node').first.to_h
+
+      if attrs['cons'] == ""
+        id = attrs['id']
+        head = attrs['head']
+        sem_head = attrs['sem_head']
+        cat = attrs['cat']
+        cons[id] = {head:head, sem_head: sem_head, cat:cat}
+      end
+    end
+
+    # puts sentence
+    # puts toks.map{|t| t.to_s}.join("\n")
+    # puts cons.map{|c| c.to_s}.join("\n")
+    # puts "-----"
+    # exit
+
+    [toks, cons]
   end
 
   def get_annotation_sentence (sentence, offset_base = 0, mode = '')
     @tid_base, @rid_base = 0, 0 unless mode == 'continue'
 
-    get_parse(sentence)
+    toks, cons = get_parse(sentence)
 
     denotations = []
+    tid_mapping = {}
     idx_last = 0
-    @tokens.each do |token|
-      denotations << {:id => 'T' + (token[:idx] + @tid_base).to_s, :span => {:begin => token[:beg] + offset_base, :end => token[:end] + offset_base}, :obj => token[:cat]}
-      idx_last = token[:idx]
+    toks.each do |id, tok|
+      id = tid_mapping[id] = 'T' + (tok[:idx] + @tid_base).to_s
+      denotations << {id:id, span:{begin: tok[:beg] + offset_base, end: tok[:end] + offset_base}, obj: tok[:pos]}
+      idx_last = tok[:idx]
+    end
+
+    # puts toks.map{|t| t.to_s}.join("\n")
+
+    cons.each do |id, con|
+      thead = con[:sem_head]
+      thead = cons[thead][:sem_head] until thead.start_with?('t')
+      con[:thead] = thead
     end
 
     relations = []
     rid_num = @rid_base
-    @tokens.each do |token|
-      if token[:args]
-        token[:args].each do |type, arg|
-          if arg >= 0
-            relations << {:id => 'R' + rid_num.to_s, :subj => 'T' + (arg + @tid_base).to_s, :obj => 'T' + (token[:idx] + @tid_base).to_s, :pred => type.downcase + 'Of'}
-            rid_num += 1
-          end
+    toks.each do |id, tok|
+      unless tok[:args].empty?
+        tok[:args].each do |type, arg|
+          arg = cons[arg][:thead] if arg.start_with?('c')
+          relations << {id: 'R' + rid_num.to_s, subj: tid_mapping[arg], obj: tid_mapping[id], pred: type.to_s.downcase + 'Of'}
+          rid_num += 1
         end
       end
     end
