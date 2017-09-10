@@ -105,7 +105,7 @@ class EnjuAccessor
       idx_last = tok[:idx]
     end
 
-    # puts toks.map{|t| t.to_s}.join("\n")
+    puts toks.map{|t| t.to_s}.join("\n")
 
     cons.each do |id, con|
       thead = con[:sem_head]
@@ -119,6 +119,7 @@ class EnjuAccessor
       unless tok[:args].empty?
         tok[:args].each do |type, arg|
           arg = cons[arg][:thead] if arg.start_with?('c')
+          next if tid_mapping[arg].nil?
           relations << {id: 'R' + rid_num.to_s, subj: tid_mapping[arg], obj: tid_mapping[id], pred: type.to_s.downcase + 'Of'}
           rid_num += 1
         end
