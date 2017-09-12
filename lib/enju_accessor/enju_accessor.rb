@@ -37,9 +37,11 @@ class EnjuAccessor
     adjustment = 0
 
     # r is a parsing result in SO format.
+    lines = r.split(/\r?\n/)
+
     idx = 0
-    r.split(/\r?\n/).each do |item|  # for each item of analysis
-      b, e, attr_str = item.split(/\t/)
+    lines.each do |line|  # for each line of analysis
+      b, e, attr_str = line.split(/\t/)
       b = b.to_i
       e = e.to_i
 
@@ -47,8 +49,10 @@ class EnjuAccessor
       attrs = node.css('node').first.to_h
 
       if attrs['tok'] == ""
+        base = attrs['base']
+
         b += adjustment
-        sentence[b...e].each_char{|c| adjustment += (1 - c.bytesize) if c !~ /\p{ASCII}/}
+        base.each_char{|c| adjustment += (1 - c.bytesize) if c !~ /\p{ASCII}/}
         e += adjustment
 
         id = attrs['id']
@@ -56,7 +60,7 @@ class EnjuAccessor
         pos = attrs['base'] if [',', '.', ':', '(', ')', '``', '&apos;&apos;'].include?(pos)
         pos.sub!('$', '-DOLLAR-')
         pos = '-COLON-' if pos == 'HYPH'
-        toks[id] = {beg: b, end:e, word:sentence[b ... e], idx:idx, base:attrs['base'], pos:pos, cat:attrs['cat'], args:{}}
+        toks[id] = {beg: b, end:e, word:sentence[b ... e], idx:idx, base:base, pos:pos, cat:attrs['cat'], args:{}}
         toks[id][:args][:arg1] = attrs['arg1'] if attrs['arg1']
         toks[id][:args][:arg2] = attrs['arg2'] if attrs['arg2']
         toks[id][:args][:arg3] = attrs['arg3'] if attrs['arg3']
@@ -65,8 +69,8 @@ class EnjuAccessor
       end
     end
 
-    r.split(/\r?\n/).each do |item|  # for each item of analysis
-      b, e, attr_str = item.split(/\t/)
+    lines.each do |line|  # for each line of analysis
+      b, e, attr_str = line.split(/\t/)
       b = b.to_i
       e = e.to_i
 
@@ -105,7 +109,7 @@ class EnjuAccessor
       idx_last = tok[:idx]
     end
 
-    puts toks.map{|t| t.to_s}.join("\n")
+    # puts toks.map{|t| t.to_s}.join("\n")
 
     cons.each do |id, con|
       thead = con[:sem_head]
