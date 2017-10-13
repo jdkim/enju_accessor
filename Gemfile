@@ -1,10 +1,5 @@
 source 'https://rubygems.org'
 
 gem 'rest-client'
-gem 'sinatra'
-gem 'json'
-gem 'erubis'
-gem 'puma'
-gem 'unicorn'
 gem 'nokogiri', '~> 1.8'
 gem 'text_sentencer', '~> 1.0.2'

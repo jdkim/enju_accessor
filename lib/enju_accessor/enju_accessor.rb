@@ -5,8 +5,8 @@ require 'nokogiri'
 
 # An instance of this class holds the parsing result of a natural language query as anlyzed by Enju.
 class EnjuAccessor
-  def initialize
-    @enju_cgi = RestClient::Resource.new "http://localhost:38401/cgi-lilfes/enju"
+  def initialize(enju_cgi_url)
+    @enju_cgi = RestClient::Resource.new(enju_cgi_url)
     @sentencer = TextSentencer.new
     @tid_base, @rid_base = 0, 0
   end
@@ -15,7 +15,7 @@ class EnjuAccessor
     begin
       response = @enju_cgi.get :params => {:sentence=>sentence, :format=>'so'}
     rescue => e
-      raise IOError, "Enju CGI server does not respond."
+      raise IOError, "Abnormal behavior of the Enju CGI server: #{e.message}."
     end
 
     parse = case response.code
@@ -24,7 +24,7 @@ class EnjuAccessor
       r = response.encode("ASCII-8BIT").force_encoding("UTF-8").to_s
       read_parse(sentence, r)
     else
-      raise IOError, "Enju CGI server dose not respond."
+      raise IOError, "Abnormal response from the Enju CGI server."
     end
 
     parse
@@ -95,7 +95,7 @@ class EnjuAccessor
     [toks, cons]
   end
 
-  def get_annotation_sentence (sentence, offset_base = 0, mode = '')
+  def parse_sentence (sentence, offset_base = 0, mode = '')
     @tid_base, @rid_base = 0, 0 unless mode == 'continue'
 
     toks, cons = get_parse(sentence)
@@ -136,7 +136,7 @@ class EnjuAccessor
     {:denotations => denotations, :relations => relations}
   end
 
-  def get_pos_tagging_sentence (sentence, offset_base = 0, mode = '')
+  def tag_sentence (sentence, offset_base = 0, mode = '')
     @id_base = 0 unless mode == 'continue'
 
     get_parse(sentence)
@@ -154,13 +154,13 @@ class EnjuAccessor
     {:denotations => denotations}
   end
 
-  def get_annotation_text (text)
+  def parse_text (text)
     segments = @sentencer.segment(text)
 
     denotations, relations = [], []
     segments.each_with_index do |s, i|
       mode = (i == 0)? nil : 'continue'
-      annotation = get_annotation_sentence(text[s[0]...s[1]], s[0], mode)
+      annotation = parse_sentence(text[s[0]...s[1]], s[0], mode)
       denotations += annotation[:denotations]
       relations += annotation[:relations]
     end
@@ -168,80 +168,17 @@ class EnjuAccessor
     {:text=> text, :denotations => denotations, :relations => relations}
   end
 
-  def get_pos_tagging (text)
+  def tag_text (text)
     segments = @sentencer.segment(text)
 
     denotations = []
     segments.each_with_index do |s, i|
       mode = (i == 0)? nil : 'continue'
-      annotation = get_pos_tagging_sentence(text[s[0]...s[1]], s[0], mode)
+      annotation = tag_sentence(text[s[0]...s[1]], s[0], mode)
       denotations += annotation[:denotations]
     end
 
     {:text=> text, :denotations => denotations}
   end
 
-end
-
-
-if __FILE__ == $0
-  require 'json'
-  require 'optparse'
-
-  outdir = 'out'
-  mode = :pas
-
-  optparse = OptionParser.new do |opts|
-    opts.banner = "Usage: enju_accessor.rb [option(s)] a-directory-with-txt-files"
-
-    opts.on('-o', '--output directory', "specifies the output directory (default: '#{outdir}')") do |d|
-      outdir = d
-    end
-
-    opts.on('-p', '--pos-tagging', "tells it to produce POS tagging instead of PAS structure") do
-      mode = :pos
-    end
-
-    opts.on('-h', '--help', 'displays this screen') do
-      puts opts
-      exit
-    end
-  end
-
-  optparse.parse!
-  unless ARGV.length == 1
-    puts optparse
-    exit
-  end
-
-  indir = ARGV[0]
-  puts "# input directory: #{indir}"
-  puts "# output directory: #{outdir}"
-
-  if !outdir.nil? && !File.exists?(outdir)
-    Dir.mkdir(outdir)
-    puts "# output directory (#{outdir}) created."
-  end
-
-  enju = EnjuAccessor.new
-
-  count_files = 0
-
-  Dir.foreach(indir) do |infile|
-    next unless infile.end_with?('.txt')
-    pmid = File.basename(infile, ".txt")
-    outfile = outdir + '/' + pmid + '.json' unless outdir.nil?
-
-    count_files += 1
-    print "#{pmid}\t#{count_files}\r"
-
-    text = File.read(indir + '/' + infile)
-    annotation = mode == :pos ? enju.get_pos_tagging(text) : enju.get_annotation_text(text)
-    annotation[:sourcedb] = 'PubMed'
-    annotation[:sourceid] = pmid
-
-    File.write(outfile, annotation.to_json)
-  end
-
-  puts "# count files: #{count_files}"
 end
