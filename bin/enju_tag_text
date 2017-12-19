@@ -4,6 +4,6 @@ require 'json'
 
 enju = EnjuAccessor.new("http://localhost:38401/cgi-lilfes/enju")
 
-text = ARGF.read
+text = ARGF.read.chomp
 annotation = enju.tag_text(text)
 puts annotation.to_json
