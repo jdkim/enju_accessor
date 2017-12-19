@@ -139,14 +139,14 @@ class EnjuAccessor
   def tag_sentence (sentence, offset_base = 0, mode = '')
     @id_base = 0 unless mode == 'continue'
 
-    get_parse(sentence)
+    toks, cons = get_parse(sentence)
 
     denotations = []
     idx_last = 0
-    @tokens.each do |token|
-      denotations << {id: 'P' + (token[:idx] + @id_base).to_s, span: {begin: token[:beg] + offset_base, end: token[:end] + offset_base}, obj: token[:pos]}
-      denotations << {id: 'B' + (token[:idx] + @id_base).to_s, span: {begin: token[:beg] + offset_base, end: token[:end] + offset_base}, obj: token[:base]}
-      idx_last = token[:idx]
+    toks.each do |id, tok|
+      denotations << {id: 'P' + (tok[:idx] + @id_base).to_s, span: {begin: tok[:beg] + offset_base, end: tok[:end] + offset_base}, obj: tok[:pos]}
+      denotations << {id: 'B' + (tok[:idx] + @id_base).to_s, span: {begin: tok[:beg] + offset_base, end: tok[:end] + offset_base}, obj: tok[:base]}
+      idx_last = tok[:idx]
     end
 
     @id_base = @id_base + idx_last + 1
